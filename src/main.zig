@@ -9,11 +9,19 @@ test "simple test" {
     var pt = PieceTable.init("hello world");
     pt.dump_table("initial");
 
-    pt.add("bad", 6);
+    pt.add(5, " bad");
     pt.dump_table("add 'bad'");
 
-    pt.add("and goodbye!", 10);
+    pt.add(15, " and goodbye!");
     pt.dump_table("add 'and goodbye!'");
+
+    pt.add(24, "-");
+    pt.dump_table("add '-'");
+
+    pt.add(0, "i say: ");
+    pt.dump_table("add 'i say: '");
+
+    // "i say: hello bad world and good-bye!"
 
     // TODO: assert expected
 }
@@ -25,7 +33,9 @@ const PieceTable = struct {
     table: [1024]Piece = undefined,
     table_len: usize = 0,
 
-    const From = enum { original, add};
+    logical_len: usize = 0,
+
+    const From = enum { original, add };
 
     const Piece = struct {
         from: From,
@@ -45,7 +55,9 @@ const PieceTable = struct {
     }
 
     pub fn init(text: []const u8) PieceTable {
-        var self: PieceTable = .{};
+        var self: PieceTable = .{
+            .logical_len = text.len,
+        };
         self.append_piece(.{
             .from = .original,
             .pos = 0,
@@ -54,26 +66,33 @@ const PieceTable = struct {
         return self;
     }
 
-    pub fn add(self: *PieceTable, text: []const u8, pos: usize) void {
-        var target_piece: ?usize = null;
-        for (self.table[0..self.table_len], 0..) |item, i| {
-            if (item.contains(pos)) {
-                target_piece = i;
-                break;
+    pub fn add(self: *PieceTable, cursor: usize, text: []const u8) void {
+        std.debug.print("{d} {d}\n", .{cursor, self.logical_len});
+        assert(cursor <= self.logical_len);
+
+        if (cursor != self.logical_len) {
+            var target_piece: ?usize = null;
+            for (self.table[0..self.table_len], 0..) |item, i| {
+                if (item.contains(cursor)) {
+                    target_piece = i;
+                    break;
+                }
             }
+            assert(target_piece != null);
+        } else {
+            self.append_piece(.{
+                .from = .add,
+                .pos = 0,
+                .len = text.len,
+            });
         }
-        assert(target_piece != null);
 
         self.append_text(text);
-        self.append_piece(.{
-            .from = .add,
-            .pos = pos,
-            .len = text.len,
-        });
+        self.logical_len += text.len;
     }
 
     fn append_text(self: *PieceTable, text: []const u8) void {
-        @memcpy(self.buf[self.buf_len..self.buf_len+text.len], text);
+        @memcpy(self.buf[self.buf_len .. self.buf_len + text.len], text);
         self.buf_len += text.len;
     }
 
