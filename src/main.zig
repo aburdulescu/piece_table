@@ -15,13 +15,13 @@ test "simple test" {
     pt.add(15, " and goodbye!");
     pt.dump_table("add 'and goodbye!'");
 
-    pt.add(24, "-");
-    pt.dump_table("add '-'");
+    pt.add(6, "good/");
+    pt.dump_table("add 'good/'");
 
     pt.add(0, "i say: ");
     pt.dump_table("add 'i say: '");
 
-    // "i say: hello bad world and good-bye!"
+    // "i say: hello good/bad world and goodbye!"
 
     // TODO: assert expected
 }
@@ -41,10 +41,6 @@ const PieceTable = struct {
         from: From,
         pos: usize,
         len: usize,
-
-        fn contains(self: Piece, pos: usize) bool {
-            return self.pos <= pos and pos < (self.pos + self.len);
-        }
     };
 
     fn dump_table(self: PieceTable, header: []const u8) void {
@@ -67,22 +63,31 @@ const PieceTable = struct {
     }
 
     pub fn add(self: *PieceTable, cursor: usize, text: []const u8) void {
-        std.debug.print("{d} {d}\n", .{cursor, self.logical_len});
         assert(cursor <= self.logical_len);
 
         if (cursor != self.logical_len) {
             var target_piece: ?usize = null;
+            var start: usize = 0;
             for (self.table[0..self.table_len], 0..) |item, i| {
-                if (item.contains(cursor)) {
+                const end = start + item.len;
+                std.debug.print("find: {d} {} [{d},{d}]\n", .{cursor, item, start, end});
+                if (start <= cursor and cursor <= end) {
                     target_piece = i;
                     break;
+                } else {
+                    start = end;
                 }
             }
             assert(target_piece != null);
+            std.debug.print("target = {}\n", .{self.table[target_piece.?]});
+
+
+
+            // TODO: insert new piece and split existing, if needed
         } else {
             self.append_piece(.{
                 .from = .add,
-                .pos = 0,
+                .pos = self.buf_len,
                 .len = text.len,
             });
         }

@@ -1,0 +1,8 @@
+orig = "hello world"
+add  = " bad and goodbye!good/i say: "
+
+                   -> o(0, 11)
+5  " bad"          -> o(0, 5), a(0, 4), o(5, 6) -> "hello bad world" -> ln=16
+15 " and goodbye!" -> o(0, 5), a(0, 4), o(5, 6) a(4, 13) -> "hello bad world and goodbye!" -> ln=29
+6  "good/"         -> o(0, 5), a(17, 5), a(0, 4), o(5, 6) a(4, 13) -> "hello good/bad world and goodbye!" -> ln=34
+0  "i say: "       -> a(22, 7), o(0, 5), a(17, 5), a(0, 4), o(5, 6) a(4, 13) -> "i say: hello good/bad world and goodbye!" -> ln=41
