@@ -27,8 +27,8 @@ test "simple test" {
 }
 
 const PieceTable = struct {
-    buf: [1024]u8 = undefined,
-    buf_len: usize = 0,
+    add_buf: [1024]u8 = undefined,
+    add_buf_len: usize = 0,
 
     table: [1024]Piece = undefined,
     table_len: usize = 0,
@@ -66,28 +66,65 @@ const PieceTable = struct {
         assert(cursor <= self.logical_len);
 
         if (cursor != self.logical_len) {
-            var target_piece: ?usize = null;
+            var have_target: ?usize = null;
+            var outside = false;
             var start: usize = 0;
             for (self.table[0..self.table_len], 0..) |item, i| {
                 const end = start + item.len;
-                std.debug.print("find: {d} {} [{d},{d}]\n", .{cursor, item, start, end});
-                if (start <= cursor and cursor <= end) {
-                    target_piece = i;
+                std.debug.print("find: {d} {} [{d},{d}]\n", .{ cursor, item, start, end });
+
+                if (cursor == start or cursor == end) {
+                    outside = true;
+                    have_target = i;
                     break;
-                } else {
-                    start = end;
                 }
+
+                if (start <= cursor and cursor <= end) {
+                    have_target = i;
+                    break;
+                }
+
+                start = end;
             }
-            assert(target_piece != null);
-            std.debug.print("target = {}\n", .{self.table[target_piece.?]});
+            assert(have_target != null);
 
+            const target = have_target.?;
+            const target_piece = self.table[target];
+            std.debug.print("target = {}\n", .{target_piece});
 
+            if (target_piece.from == .original) {
+                if (outside) {
+                    // cursor is outside original => insert at target index
+                    // TODO
+                } else {
+                    // cursor is inside original => split original and insert inbetween
+                    self.table[target] = .{
+                        .from = target_piece.from,
+                        .pos = target_piece.pos,
+                        .len = cursor,
+                    };
+                    self.append_piece(.{
+                        .from = .add,
+                        .pos = self.add_buf_len,
+                        .len = text.len,
+                    });
+                    self.append_piece(.{
+                        .from = target_piece.from,
+                        .pos = cursor,
+                        .len = target_piece.len - text.len,
+                    });
+                }
+            } else {
+                // target is in .add => insert at target index
+                // TODO
+            }
 
-            // TODO: insert new piece and split existing, if needed
+            // move everything else to the right
+            // TODO
         } else {
             self.append_piece(.{
                 .from = .add,
-                .pos = self.buf_len,
+                .pos = self.add_buf_len,
                 .len = text.len,
             });
         }
@@ -97,8 +134,8 @@ const PieceTable = struct {
     }
 
     fn append_text(self: *PieceTable, text: []const u8) void {
-        @memcpy(self.buf[self.buf_len .. self.buf_len + text.len], text);
-        self.buf_len += text.len;
+        @memcpy(self.add_buf[self.add_buf_len .. self.add_buf_len + text.len], text);
+        self.add_buf_len += text.len;
     }
 
     fn append_piece(self: *PieceTable, p: Piece) void {
